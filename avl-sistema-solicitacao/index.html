@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema de Solicitações</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f6f9; }
+    .navbar-brand small { font-weight: 400; opacity: .75; }
+    .tabela-descricao { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #arvore {
+      background: #1e2430; color: #d7e3f4; border-radius: .5rem;
+      padding: 1rem; min-height: 80px; max-height: 360px; overflow: auto;
+      font-size: .9rem; margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-primary mb-4">
+  <div class="container">
+    <span class="navbar-brand mb-0 h1">Sistema de Solicitações <small>· Árvore AVL</small></span>
+  </div>
+</nav>
+
+<main class="container pb-5">
+
+  <!-- CADASTRO -->
+  <section class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold">Nova solicitação</div>
+    <div class="card-body">
+      <form id="formCadastro" class="row g-3" novalidate>
+        <div class="col-md-9">
+          <label for="cadSolicitante" class="form-label">Solicitante</label>
+          <input type="text" class="form-control" id="cadSolicitante">
+        </div>
+        <div class="col-12">
+          <label for="cadDescricao" class="form-label">Descrição</label>
+          <textarea class="form-control" id="cadDescricao" rows="2"></textarea>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Cadastrar solicitação</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- CONSULTA -->
+  <section class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold">Consultar por número</div>
+    <div class="card-body">
+      <form id="formBusca" class="row g-2 align-items-end" novalidate>
+        <div class="col-sm-4 col-md-3">
+          <label for="buscaNumero" class="form-label">Número</label>
+          <input type="number" min="1" step="1" class="form-control" id="buscaNumero">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-outline-primary">Consultar</button>
+          <button type="button" class="btn btn-outline-secondary" id="btnLimparBusca">Mostrar todas</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- LISTAGEM -->
+  <section class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold">Solicitações</div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Número</th>
+            <th>Solicitante</th>
+            <th>Data de abertura</th>
+            <th>Descrição</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="corpoTabela"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- AVL -->
+  <section class="card shadow-sm">
+    <div class="card-header fw-semibold">Representação da Árvore AVL</div>
+    <div class="card-body">
+      <p class="text-muted small mb-2">Raiz à esquerda; filhos à direita ficam em cima e filhos à esquerda embaixo.</p>
+      <pre id="arvore">Carregando...</pre>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL: ALTERAR -->
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="tituloModalEditar" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="formEditar" novalidate>
+      <div class="modal-header">
+        <h5 class="modal-title" id="tituloModalEditar">Alterar solicitação</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-sm-4">
+            <label for="edNumero" class="form-label">Número</label>
+            <input type="text" class="form-control" id="edNumero" readonly>
+          </div>
+          <div class="col-sm-8">
+            <label for="edData" class="form-label">Data de abertura</label>
+            <input type="text" class="form-control" id="edData" readonly>
+          </div>
+          <div class="col-12">
+            <label for="edSolicitante" class="form-label">Solicitante</label>
+            <input type="text" class="form-control" id="edSolicitante">
+          </div>
+          <div class="col-12">
+            <label for="edDescricao" class="form-label">Descrição</label>
+            <textarea class="form-control" id="edDescricao" rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRMAR REMOÇÃO -->
+<div class="modal fade" id="modalRemover" tabindex="-1" aria-labelledby="tituloModalRemover" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tituloModalRemover">Remover solicitação</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">Remover a solicitação <strong id="numeroRemover"></strong>?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarRemover">Remover</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container position-fixed top-0 end-0 p-3" id="areaToasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  /* =====================================================================
+     CONFIGURAÇÃO DAS ROTAS  (ajuste aqui se as rotas do seu back forem outras)
+     Se colocar este arquivo em src/main/resources/static/, pode deixar
+     BASE_URL = "" (mesma origem, sem problema de CORS).
+     ===================================================================== */
+  const BASE_URL = "http://localhost:8080";
+  const ROTAS = {
+    listar:     ()  => `${BASE_URL}/solicitacoes`,            // GET
+    buscar:     (n) => `${BASE_URL}/solicitacoes/${n}`,       // GET
+    cadastrar:  ()  => `${BASE_URL}/solicitacoes`,            // POST
+    atualizar:  (n) => `${BASE_URL}/update/${n}`,             // PUT
+    remover:    (n) => `${BASE_URL}/solicitacoes/${n}`,       // DELETE
+    arvore:     ()  => `${BASE_URL}/solicitacoes/arvore`      // GET (representação da AVL)
+  };
+
+  /* ----------------------------- utilidades ----------------------------- */
+  const $ = (id) => document.getElementById(id);
+  let solicitacoes = new Map();   // numero -> objeto (para preencher o modal)
+  let numeroParaRemover = null;
+
+  const modalEditar  = new bootstrap.Modal($("modalEditar"));
+  const modalRemover = new bootstrap.Modal($("modalRemover"));
+
+  function escapar(texto) {
+    const d = document.createElement("div");
+    d.textContent = texto ?? "";
+    return d.innerHTML;
+  }
+
+  function toast(mensagem, tipo = "success") {
+    const cores = { success: "text-bg-success", danger: "text-bg-danger", warning: "text-bg-warning" };
+    const el = document.createElement("div");
+    el.className = `toast align-items-center border-0 ${cores[tipo] || cores.success}`;
+    el.setAttribute("role", "alert");
+    el.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">${escapar(mensagem)}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+      </div>`;
+    $("areaToasts").appendChild(el);
+    el.addEventListener("hidden.bs.toast", () => el.remove());
+    new bootstrap.Toast(el, { delay: 4000 }).show();
+  }
+
+  // Aceita "2026-09-23T20:30:00", "2026-09-23 20:30:00" ou array [2026,9,23,20,30,...]
+  function formatarData(valor) {
+    if (!valor) return "-";
+    const p = (n) => String(n).padStart(2, "0");
+    if (Array.isArray(valor)) {
+      const [a, m, d, h = 0, min = 0] = valor;
+      return `${p(d)}/${p(m)}/${a} ${p(h)}:${p(min)}`;
+    }
+    const dt = new Date(String(valor).replace(" ", "T"));
+    if (isNaN(dt)) return String(valor);
+    return `${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+  }
+
+  // Faz a requisição e devolve { ok, corpo, erroRede }
+  async function chamar(url, opcoes = {}) {
+    try {
+      const resp = await fetch(url, {
+        ...opcoes,
+        headers: { "Content-Type": "application/json", ...(opcoes.headers || {}) }
+      });
+      const texto = await resp.text();
+      let corpo = texto;
+      try { corpo = JSON.parse(texto); } catch (_) { /* não era JSON */ }
+      const sucessoJson = !(corpo && typeof corpo === "object" && corpo.sucesso === false);
+      return { ok: resp.ok && sucessoJson, corpo, erroRede: false };
+    } catch (e) {
+      return { ok: false, corpo: null, erroRede: true };
+    }
+  }
+
+  function mensagemDe(res, padrao) {
+    if (res.erroRede) return "Não foi possível conectar ao servidor (localhost:8080).";
+    if (res.corpo && typeof res.corpo === "object" && res.corpo.mensagem) return res.corpo.mensagem;
+    return padrao;
+  }
+
+  /* ----------------------------- listagem ----------------------------- */
+  function extrairLista(corpo) {
+    if (Array.isArray(corpo)) return corpo;
+    if (corpo && typeof corpo === "object") {
+      const arr = Object.values(corpo).find(Array.isArray);
+      if (arr) return arr;
+      if (corpo.numero !== undefined) return [corpo];   // resposta de uma única solicitação
+    }
+    return [];
+  }
+
+  function desenharTabela(lista) {
+    solicitacoes = new Map(lista.map((s) => [s.numero, s]));
+    const corpo = $("corpoTabela");
+    if (lista.length === 0) {
+      corpo.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Nenhuma solicitação encontrada.</td></tr>`;
+      return;
+    }
+    // A ordem exibida é exatamente a que o back-end devolve (percurso em ordem da AVL).
+    corpo.innerHTML = lista.map((s) => `
+      <tr>
+        <td class="fw-semibold">${escapar(s.numero)}</td>
+        <td>${escapar(s.solicitante)}</td>
+        <td class="text-nowrap">${formatarData(s.dataAbertura)}</td>
+        <td class="tabela-descricao" title="${escapar(s.descricao)}">${escapar(s.descricao)}</td>
+        <td class="text-end text-nowrap">
+          <button class="btn btn-sm btn-outline-primary" data-acao="editar" data-numero="${s.numero}">Editar</button>
+          <button class="btn btn-sm btn-outline-danger" data-acao="remover" data-numero="${s.numero}">Remover</button>
+        </td>
+      </tr>`).join("");
+  }
+
+  async function carregarLista() {
+    const res = await chamar(ROTAS.listar());
+    if (!res.ok) {
+      toast(mensagemDe(res, "Erro ao carregar as solicitações."), "danger");
+      desenharTabela([]);
+      return;
+    }
+    desenharTabela(extrairLista(res.corpo));
+  }
+
+  /* ----------------------------- árvore AVL ----------------------------- */
+  const chaveDe  = (n) => n.numero ?? n.chave ?? n.key ?? n.valor ?? n.dado?.numero ?? "?";
+  const esqDe    = (n) => n.esquerda ?? n.esq ?? n.left ?? null;
+  const dirDe    = (n) => n.direita ?? n.dir ?? n.right ?? null;
+
+  function desenharNo(no, nivel) {
+    if (!no) return "";
+    return desenharNo(dirDe(no), nivel + 1)
+         + "      ".repeat(nivel) + chaveDe(no) + "\n"
+         + desenharNo(esqDe(no), nivel + 1);
+  }
+
+  async function carregarArvore() {
+    const alvo = $("arvore");
+    const res = await chamar(ROTAS.arvore());
+    if (!res.ok) { alvo.textContent = "Representação da árvore indisponível."; return; }
+    let c = res.corpo;
+    if (typeof c === "string") { alvo.textContent = c || "Árvore vazia."; return; }
+    if (c && c.raiz !== undefined) c = c.raiz;
+    if (!c) { alvo.textContent = "Árvore vazia."; return; }
+    if (typeof c === "object" && (c.numero !== undefined || c.chave !== undefined || c.key !== undefined)) {
+      alvo.textContent = desenharNo(c, 0);
+    } else {
+      alvo.textContent = JSON.stringify(c, null, 2);
+    }
+  }
+
+  async function atualizarTela() {
+    await Promise.all([carregarLista(), carregarArvore()]);
+  }
+
+  /* ----------------------------- cadastrar ----------------------------- */
+  $("formCadastro").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const numero = parseInt($("cadNumero").value, 10);
+    const solicitante = $("cadSolicitante").value.trim();
+    const descricao = $("cadDescricao").value.trim();
+
+    if (isNaN(numero) || numero <= 0) return toast("Informe um número válido.", "warning");
+    if (!solicitante) return toast("Informe o nome do solicitante.", "warning");
+    if (!descricao) return toast("Informe a descrição da solicitação.", "warning");
+
+    // dataAbertura NÃO é enviada: é gerada pelo back-end
+    const res = await chamar(ROTAS.cadastrar(), {
+      method: "POST",
+      body: JSON.stringify({ numero, solicitante, descricao })
+    });
+
+    if (res.ok) {
+      toast(mensagemDe(res, "Solicitação cadastrada com sucesso."));
+      $("formCadastro").reset();
+      atualizarTela();
+    } else {
+      toast(mensagemDe(res, "Não foi possível cadastrar a solicitação."), "danger");
+    }
+  });
+
+  /* ----------------------------- consultar ----------------------------- */
+  $("formBusca").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const numero = parseInt($("buscaNumero").value, 10);
+    if (isNaN(numero) || numero <= 0) return toast("Informe um número válido para consultar.", "warning");
+
+    const res = await chamar(ROTAS.buscar(numero));
+    if (!res.ok) {
+      toast(mensagemDe(res, "Solicitação não encontrada."), "danger");
+      return;
+    }
+    desenharTabela(extrairLista(res.corpo));
+  });
+
+  $("btnLimparBusca").addEventListener("click", () => {
+    $("buscaNumero").value = "";
+    carregarLista();
+  });
+
+  /* ----------------------- ações da tabela (delegação) ----------------------- */
+  $("corpoTabela").addEventListener("click", (e) => {
+    const botao = e.target.closest("button[data-acao]");
+    if (!botao) return;
+    const numero = parseInt(botao.dataset.numero, 10);
+
+    if (botao.dataset.acao === "editar") abrirEdicao(numero);
+    if (botao.dataset.acao === "remover") {
+      numeroParaRemover = numero;
+      $("numeroRemover").textContent = `Nº ${numero}`;
+      modalRemover.show();
+    }
+  });
+
+  /* ----------------------------- alterar ----------------------------- */
+  function abrirEdicao(numero) {
+    const s = solicitacoes.get(numero);
+    if (!s) return toast("Solicitação não encontrada.", "danger");
+    $("edNumero").value = s.numero;
+    $("edData").value = formatarData(s.dataAbertura);
+    $("edSolicitante").value = s.solicitante ?? "";
+    $("edDescricao").value = s.descricao ?? "";
+    modalEditar.show();
+  }
+
+  $("formEditar").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const numero = parseInt($("edNumero").value, 10);   // @PathVariable inteiro
+    const solicitante = $("edSolicitante").value.trim();
+    const descricao = $("edDescricao").value.trim();
+
+    if (!solicitante) return toast("Informe o nome do solicitante.", "warning");
+    if (!descricao) return toast("Informe a descrição da solicitação.", "warning");
+
+    // Só os campos alterá-veis vão no corpo; o número vai na URL
+    const res = await chamar(ROTAS.atualizar(numero), {
+      method: "PUT",
+      body: JSON.stringify({ solicitante, descricao })
+    });
+
+    if (res.ok) {
+      modalEditar.hide();
+      toast(mensagemDe(res, "Solicitação alterada com sucesso."));
+      atualizarTela();
+    } else {
+      toast(mensagemDe(res, "Não foi possível alterar a solicitação."), "danger");
+    }
+  });
+
+  /* ----------------------------- remover ----------------------------- */
+  $("btnConfirmarRemover").addEventListener("click", async () => {
+    if (numeroParaRemover === null) return;
+    const res = await chamar(ROTAS.remover(numeroParaRemover), { method: "DELETE" });
+    modalRemover.hide();
+
+    if (res.ok) {
+      toast(mensagemDe(res, "Solicitação removida com sucesso."));
+      atualizarTela();
+    } else {
+      toast(mensagemDe(res, "Solicitação não encontrada."), "danger");
+    }
+    numeroParaRemover = null;
+  });
+
+  /* ----------------------------- início ----------------------------- */
+  atualizarTela();
+</script>
+</body>
+</html>
